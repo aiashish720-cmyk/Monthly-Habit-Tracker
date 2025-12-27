@@ -25,11 +25,25 @@
         .day-label { font-size: 0.65rem; }
         .day-number { font-size: 0.75rem; }
 
-        /* Custom scrollbar for the table if it ever needs it on very small mobile, 
-           but designed to be full-width on desktop/tablet */
+        /* Custom scrollbar for the table if it ever needs it on very small mobile */
         .table-wrap {
             width: 100%;
-            overflow-x: hidden; /* Prevent horizontal scroll */
+            overflow-x: hidden;
+        }
+
+        /* Input styling for inline editing */
+        .habit-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            width: 100%;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .habit-input:focus {
+            background: #f1f5f9;
+            box-shadow: inset 0 0 0 1px #cbd5e1;
         }
     </style>
 </head>
@@ -113,12 +127,18 @@
         }
 
         function addHabit() {
-            const name = prompt("Enter habit name:");
-            if (name) {
-                state.habits.push({ id: 'h' + Date.now(), name, goal: 20 });
-                save();
-                render();
-            }
+            const id = 'h' + Date.now();
+            state.habits.push({ id, name: 'New Habit', goal: 20 });
+            save();
+            render();
+            // Optional: focus the new input
+            setTimeout(() => {
+                const input = document.querySelector(`input[data-id="${id}"]`);
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }, 10);
         }
 
         function deleteHabit(id) {
@@ -127,6 +147,14 @@
                 save();
                 render();
             }
+        }
+
+        function updateHabitName(id, name) {
+            const habit = state.habits.find(h => h.id === id);
+            if (habit) habit.name = name;
+            save();
+            // Don't full re-render here to avoid losing focus/cursor position while typing
+            // but we need to update analytics if they rely on names (they don't currently)
         }
 
         function updateGoal(id, goal) {
@@ -196,8 +224,6 @@
             });
 
             const percent = totalPossible > 0 ? Math.round((totalDone / totalPossible) * 100) : 0;
-            const dashArray = (percent / 100) * 471;
-
             const root = document.getElementById('analytics-root');
             root.innerHTML = `
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center">
@@ -265,10 +291,20 @@
 
                 html += `
                     <tr class="hover:bg-slate-50/50 group">
-                        <td class="p-2 border-r border-slate-100">
+                        <td class="p-1.5 border-r border-slate-100">
                             <div class="flex items-center gap-1">
-                                <button onclick="deleteHabit('${habit.id}')" class="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500"><i data-lucide="x" class="w-3 h-3"></i></button>
-                                <span class="text-[11px] font-semibold text-slate-700 truncate block">${habit.name}</span>
+                                <button onclick="deleteHabit('${habit.id}')" class="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 p-0.5 transition-all">
+                                    <i data-lucide="x" class="w-3 h-3"></i>
+                                </button>
+                                <input 
+                                    type="text" 
+                                    data-id="${habit.id}"
+                                    class="habit-input text-[11px] font-semibold text-slate-700 truncate" 
+                                    value="${habit.name}" 
+                                    oninput="updateHabitName('${habit.id}', this.value)"
+                                    onblur="render()" 
+                                    spellcheck="false"
+                                >
                             </div>
                         </td>
                         <td class="p-1 text-center border-r border-slate-100">
@@ -341,7 +377,7 @@
                                     <span class="text-[9px] font-black text-slate-300">0${i+1}</span>
                                     <span class="text-[11px] font-bold text-slate-700">${h.name}</span>
                                 </div>
-                                <span class="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">${h.count} DAYS</span>
+                                <span class="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase">${h.count} DAYS</span>
                             </div>
                         `).join('')}
                     </div>
